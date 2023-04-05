@@ -1,5 +1,6 @@
 module red.annotation {
     exports dev.redio.annotation;
+    exports dev.redio.internal;
 
     requires jdk.compiler;
     requires java.compiler;

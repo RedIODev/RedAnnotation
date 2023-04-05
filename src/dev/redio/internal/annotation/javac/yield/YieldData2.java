@@ -80,7 +80,7 @@ public class YieldData2 {
     private static Map<JCYield, JCStatement> createEnclosingStatementMap(JCClassDecl classDecl) {
         var result = new HashMap<JCYield, JCStatement>();
         var statementFinder = new StatementFinder();
-        classDecl.accept(statementFinder);
+        statementFinder.visit(classDecl);
         for (var statement : statementFinder.statements) {
             var yieldFinder = new YieldFinder();
             statement.accept(yieldFinder);
@@ -91,31 +91,56 @@ public class YieldData2 {
         return result;
     }
 
-    private static class StatementFinder extends TreeTranslator {
-        java.util.List<JCStatement> statements = new ArrayList<>();
+    private static class StatementFinder {
 
-        @Override
-        public void visitDoLoop(JCDoWhileLoop that) {
-            statements.add(that);
-            super.visitDoLoop(that);
+        final java.util.List<JCStatement> statements = new ArrayList<>();
+
+        public void visit(JCClassDecl classDecl) {
+            classDecl.accept(new ForVisitor());
+            classDecl.accept(new ForEachVisitor());
+            classDecl.accept(new WhileVisitor());
+            classDecl.accept(new DoWhileVisitor());
+            classDecl.accept(new TryVisitor());
         }
 
-        @Override
-        public void visitForLoop(JCForLoop that) {
-            statements.add(that);
-            super.visitForLoop(that);
+        private class ForVisitor extends TreeTranslator {
+            @Override
+            public void visitForLoop(JCForLoop tree) {
+                statements.add(tree);
+                super.visitForLoop(tree);
+            }
         }
 
-        @Override
-        public void visitForeachLoop(JCEnhancedForLoop that) {
-            statements.add(that);
-            super.visitForeachLoop(that);
+        private class ForEachVisitor extends TreeTranslator {
+            @Override
+            public void visitForeachLoop(JCEnhancedForLoop tree) {
+                statements.add(tree);
+                super.visitForeachLoop(tree);
+            }
         }
 
-        @Override
-        public void visitTry(JCTry that) {
-            statements.add(that);
-            super.visitTry(that);
+        private class WhileVisitor extends TreeTranslator {
+            @Override
+            public void visitWhileLoop(JCWhileLoop tree) {
+                statements.add(tree);
+                super.visitWhileLoop(tree);
+            }
+        }
+
+        private class DoWhileVisitor extends TreeTranslator {
+            @Override
+            public void visitDoLoop(JCDoWhileLoop tree) {
+                statements.add(tree);
+                super.visitDoLoop(tree);
+            }
+        }
+
+        private class TryVisitor extends TreeTranslator {
+            @Override
+            public void visitTry(JCTry tree) {
+                statements.add(tree);
+                super.visitTry(tree);
+            }
         }
 
     }

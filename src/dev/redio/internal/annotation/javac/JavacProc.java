@@ -15,6 +15,8 @@ import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
 import dev.redio.internal.annotation.AnnoProc;
+import dev.redio.internal.annotation.javac.yield.ResultVarResolver;
+import dev.redio.internal.annotation.javac.yield.YieldData2;
 import dev.redio.internal.annotation.javac.yield.YieldResolver;
 
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
@@ -46,8 +48,10 @@ public class JavacProc implements AnnoProc {
             if (!(tree instanceof JCClassDecl classDecl))
                 continue;
             messager.printNote("JavacProc:" + tree);
-            tree.accept(new YieldResolver(classDecl, maker, names, messager));
-            //tree.accept(new Test());
+            var data = new YieldData2(classDecl, maker, names, messager);
+            new ResultVarResolver(data, maker, names, messager).visit(classDecl);
+            tree.accept(new YieldResolver(data, maker, names, messager));
+            // messager.printNote("ClassDeclAfter:" + tree);
 
         }
         return false;
@@ -55,10 +59,10 @@ public class JavacProc implements AnnoProc {
 
     // private class Test extends TreeTranslator {
 
-    //     @Override
-    //     public void visitYield(JCYield tree) {
-    //         messager.printNote("YieldFound");
-    //         super.visitYield(tree);
-    //     }
+    // @Override
+    // public void visitYield(JCYield tree) {
+    // messager.printNote("YieldFound");
+    // super.visitYield(tree);
+    // }
     // }
 }

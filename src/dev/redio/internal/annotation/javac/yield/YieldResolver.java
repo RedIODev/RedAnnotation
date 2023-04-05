@@ -25,20 +25,18 @@ public class YieldResolver extends TreeTranslator {
     private final Name.Table names;
     private final Messager messager;
 
-    public YieldResolver(JCClassDecl classDecl, TreeMaker maker, Name.Table names, Messager messager) {
+    public YieldResolver(YieldData2 data, TreeMaker maker, Name.Table names, Messager messager) {
         this.maker = maker;
         this.names = names;
         this.messager = messager;
-
-        data = new YieldData2(classDecl, maker, names, messager);
-        messager.printNote("YieldResolver init done.");
+        this.data = data;
     }
 
     @Override
     public void visitYield(JCYield tree) {
-        messager.printNote("VisitYield");
+        // messager.printNote("VisitYield");
         var enclosingStatement = data.getEnclosingSourceStatement(tree);
-        messager.printNote("Visited yield statement:" + enclosingStatement);
+        // messager.printNote("Visited yield statement:" + enclosingStatement);
         if (enclosingStatement == null)
             return;
         result = switch (enclosingStatement.getKind()) {
@@ -46,14 +44,15 @@ public class YieldResolver extends TreeTranslator {
             case ENHANCED_FOR_LOOP:
             case WHILE_LOOP:
             case DO_WHILE_LOOP:
-                messager.printNote("LoopYield Visited");
+                // messager.printNote("LoopYield Visited");
                 yield loopExpression(tree, data.getOrCreateTempTarget(enclosingStatement));
             case TRY:
                 yield tryExpression(tree, data.getOrCreateTempTarget(enclosingStatement));
             default:
-                yield tree;
-
+                yield null;
         };
+        if (result == null)
+            super.visitYield(tree);
         // result = switch (enclosingStatement) {
         // case JCForLoop loop -> forExpression(tree,
         // data.getOrCreateTempTarget(enclosingStatement), loop);
@@ -68,35 +67,6 @@ public class YieldResolver extends TreeTranslator {
         // data.getOrCreateTempTarget(enclosingStatement), tryExpr);
         // default -> result;
         // };
-    }
-
-    @Override
-    public void visitForLoop(JCForLoop tree) {
-        visitEnclosingStatement(tree);
-    }
-
-    @Override
-    public void visitForeachLoop(JCEnhancedForLoop tree) {
-        visitEnclosingStatement(tree);
-    }
-
-    @Override
-    public void visitWhileLoop(JCWhileLoop tree) {
-        visitEnclosingStatement(tree);
-    }
-
-    @Override
-    public void visitDoLoop(JCDoWhileLoop tree) {
-        visitEnclosingStatement(tree);
-    }
-
-    @Override
-    public void visitTry(JCTry tree) {
-        var catchParam = maker.ReceiverVarDef(null, maker.Ident(names.fromString("ignored")),
-                maker.Ident(names.fromString("BreakException")));
-        var catcher = maker.Catch(catchParam, maker.Block(0, List.nil()));
-        tree.catchers.add(0, catcher);
-        visitEnclosingStatement(tree);
     }
 
     // private JCTree forExpression(JCYield yieldStatement, JCVariableDecl result) {
@@ -131,32 +101,17 @@ public class YieldResolver extends TreeTranslator {
     // }
 
     private JCTree loopExpression(JCYield yieldStatement, JCVariableDecl result) {
-        messager.printNote("Loop expr triggered");
+        // messager.printNote("Loop expr triggered");
         return maker.Block(0, List.of(
-                maker.Exec(maker.Assign(maker.Ident(result), yieldStatement.value)),
+                maker.Exec(maker.Assign(maker.Ident(result.name), yieldStatement.value)),
                 maker.Break(null)));
     }
 
     private JCTree tryExpression(JCYield yieldStatement, JCVariableDecl result) {
         return maker.Block(0, List.of(
-                maker.Exec(maker.Assign(maker.Ident(result), yieldStatement.value)),
-                maker.Throw(maker.NewClass(null, null, maker.Ident(names.fromString("BreakError")), null, null))));
+                maker.Exec(maker.Assign(maker.Ident(result.name), yieldStatement.value)),
+                maker.Throw(maker.NewClass(null, null,
+                        maker.Ident(names.fromString("dev.redio.internal.BreakException")), null, null))));
     }
 
-    private Optional<JCVariableDecl> getTarget(JCStatement controlFlowStatement) {
-        return Optional.ofNullable(data.getTarget(controlFlowStatement));
-    }
-
-    private JCTree addResultVar(JCVariableDecl target, JCStatement controlFlowStatement) {
-        return maker.Block(0, List.of(
-                data.getOrCreateTempTarget(controlFlowStatement),
-                controlFlowStatement));
-    }
-
-    private void visitEnclosingStatement(JCStatement tree) {
-        var target = getTarget(tree);
-        if (target.isEmpty())
-            return;
-        result = addResultVar(target.get(), tree);
-    }
 }
